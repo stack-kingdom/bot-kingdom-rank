@@ -12,7 +12,7 @@ import { SlashCommandBuilder } from 'discord.js';
  */
 export const data = new SlashCommandBuilder()
     .setName('ping')
-    .setDescription('Replies with Pong!');
+    .setDescription('Responde com Pong!');
 console.log('request received');
 
 export async function execute(interaction) {
