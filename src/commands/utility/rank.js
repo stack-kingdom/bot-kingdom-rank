@@ -10,7 +10,7 @@ import { openDb } from '../../../data/database.js';
  */
 const data = new SlashCommandBuilder()
     .setName('rank')
-    .setDescription('Exibir rank de usuários');
+    .setDescription('Exibir ranking de atividade dos usuários');
 
 /**
  * @param {CommandInteraction} interaction
@@ -35,14 +35,32 @@ async function execute(interaction) {
         return;
     }
 
-    let reply = 'Rank de usuários:\n';
-    users.forEach((user, index) => {
-        const position = index + 1;
-        reply += `\`${position}\` **${user.username}** - \`${user.message_count}\` mensagens\n`;
-    });
+    const embed = {
+        color: 0x0099ff,
+        title: 'Top 10 ranking de usuários',
+        description: 'Confira os usuários mais ativos:',
+        fields: users.map((user, index) => {
+            const position = index + 1;
+            let medal = '';
+            if (position === 1) medal = '🥇 ';
+            else if (position === 2) medal = '🥈 ';
+            else if (position === 3) medal = '🥉 ';
+            else medal = '🎖️ ';
+
+            return {
+                name: `${medal} ${position}° ${user.username} ${user.message_count} **XP** ✨`,
+                value: ``,
+                inline: false,
+            };
+        }),
+        timestamp: new Date(),
+        footer: {
+            text: 'Bot Kingdom Rank',
+        },
+    };
 
     await interaction.deferReply();
-    await interaction.editReply(reply);
+    await interaction.editReply({ embeds: [embed] });
 }
 
 export { data, execute };
