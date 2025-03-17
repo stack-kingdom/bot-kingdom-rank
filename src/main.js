@@ -11,6 +11,15 @@ import { openDb, createTable } from '../data/database.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const BOT_RULES = () => {
+    try {
+        return JSON.parse(fs.readFileSync('./rules.json', 'utf8'));
+    } catch (error) {
+        console.error('Erro ao ler arquivo JSON:', error);
+        return {};
+    }
+};
+
 /**
  * @type {Client}
  * @description Cliente do bot para interagir com a API do Discord
@@ -60,9 +69,15 @@ client.on('messageCreate', async (message) => {
         message.author.id
     );
 
+    const rules = BOT_RULES();
+
+    if (rules[message.content]) {
+        await message.reply(rules[message.content]);
+        console.log(message.content);
+    }
     if (user) {
         await db.run(
-            'UPDATE users SET message_count = message_count + 1 WHERE id = ?',
+            `UPDATE users SET message_count = message_count + ${rules.points.mensagens} WHERE id = ?`,
             message.author.id
         );
     } else {
