@@ -2,7 +2,7 @@
  * @fileoverview Perfil de metricas do usuário.
  */
 
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { openDb } from '../../../data/database.js';
 
 /**
@@ -38,14 +38,12 @@ async function execute(interaction) {
         return;
     }
 
-    const embed = {
-        color: 0x0099ff,
-        title: `Olá ${userData.username}`,
-        description: `Seus pontos de atividade:`,
-        thumbnail: {
-            url: user.displayAvatarURL({ dynamic: true }),
-        },
-        fields: [
+    const embed = new EmbedBuilder()
+        .setColor('#0099ff')
+        .setTitle(`Olá ${userData.username}`)
+        .setDescription('Seus pontos de atividade:')
+        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+        .addFields(
             {
                 name: 'Mensagens de texto:',
                 value: `${userData.message_count} XP ✨`,
@@ -55,13 +53,10 @@ async function execute(interaction) {
                 name: 'Atividades nas calls:',
                 value: 'Em breve...',
                 inline: false,
-            },
-        ],
-        timestamp: new Date(),
-        footer: {
-            text: 'Bot Kingdom Rank',
-        },
-    };
+            }
+        )
+        .setTimestamp()
+        .setFooter({ text: 'Bot Kingdom Rank' });
 
     await interaction.reply({ embeds: [embed] });
 }

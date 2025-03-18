@@ -1,7 +1,11 @@
 /**
  * @fileoverview comando para exibir o rank de usuários.
  */
-import { SlashCommandBuilder, CommandInteraction } from 'discord.js';
+import {
+    SlashCommandBuilder,
+    CommandInteraction,
+    EmbedBuilder,
+} from 'discord.js';
 import { openDb } from '../../../data/database.js';
 
 /**
@@ -35,29 +39,28 @@ async function execute(interaction) {
         return;
     }
 
-    const embed = {
-        color: 0x0099ff,
-        title: 'Top 10 ranking de usuários',
-        description: 'Confira os usuários mais ativos:',
-        fields: users.map((user, index) => {
-            const position = index + 1;
-            let medal = '';
-            if (position === 1) medal = '🥇 ';
-            else if (position === 2) medal = '🥈 ';
-            else if (position === 3) medal = '🥉 ';
-            else medal = '🎖️ ';
+    const embed = new EmbedBuilder()
+        .setColor('#0099ff')
+        .setTitle('Top 10 ranking de usuários')
+        .setDescription('Confira os usuários mais ativos:')
+        .addFields(
+            users.map((user, index) => {
+                const position = index + 1;
+                let medal = '';
+                if (position === 1) medal = '🥇 ';
+                else if (position === 2) medal = '🥈 ';
+                else if (position === 3) medal = '🥉 ';
+                else medal = '🎖️ ';
 
-            return {
-                name: `${medal} ${position}° ${user.username} ${user.message_count} **XP** ✨`,
-                value: ``,
-                inline: false,
-            };
-        }),
-        timestamp: new Date(),
-        footer: {
-            text: 'Bot Kingdom Rank',
-        },
-    };
+                return {
+                    name: `${medal} ${position}° ${user.username} ${user.message_count} **XP** ✨`,
+                    value: ``,
+                    inline: false,
+                };
+            })
+        )
+        .setTimestamp()
+        .setFooter({ text: 'Bot Kingdom Rank' });
 
     await interaction.deferReply();
     await interaction.editReply({ embeds: [embed] });
