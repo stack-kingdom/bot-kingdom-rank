@@ -1,18 +1,17 @@
 # Dependências
 
-- Recomenda-se a utilização do gerenciador de pacotes `pnpm`
-- Versão do Node utilizada: `v23.9.0`
+- Recomenda-se a utilização do Docker ou Podman.
 
-Baixe todas com:
+Baixe as dependências:
 
 ```shell
-pnpm install
+docker build -t bot-kingdom-rank . 
 ```
 
-Execute com:
+Execute:
 
 ```shell
-node .
+docker run --rm -it bot-kingdom-rank
 ```
 
 Bibbidi-bobbidi-boo 🪄
