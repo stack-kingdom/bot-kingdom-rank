@@ -5,9 +5,9 @@
 import { SlashCommandBuilder } from 'discord.js';
 
 /**
- * @constant data
  * @description Dados do comando
- * @type {SlashCommandBuilder}
+ * @constant data
+ * @type {Object}
  * @memberof module:commands/utility/ping
  */
 export const data = new SlashCommandBuilder()
@@ -15,6 +15,12 @@ export const data = new SlashCommandBuilder()
     .setDescription('Responde com Pong!');
 console.log('request received');
 
+/**
+ * @description Função para executar o comando
+ * @function execute
+ * @param {CommandInteraction} interaction
+ * @returns {Promise<void>}
+ */
 export async function execute(interaction) {
     await interaction.reply('Pong!');
 }

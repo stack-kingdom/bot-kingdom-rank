@@ -1,9 +1,9 @@
 /**
  * @fileoverview Perfil de metricas do usuário.
  */
-
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { openDb } from '../../../data/database.js';
+import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import rules from '../../utils/rules.js';
+import { pool } from '../../../data/database.js';
 
 /**
  * @type {Object}
@@ -13,23 +13,19 @@ const data = new SlashCommandBuilder()
     .setName('user_info')
     .setDescription('Minhas pontuações de atividade');
 
-/**
- * @param {CommandInteraction} interaction
+ /**
  * @description Função para executar o comando
+ * @param {CommandInteraction} interaction
+  * @return {Promise<void>}
  */
 async function execute(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     let userData;
     try {
-        const db = await openDb();
-        userData = await db.get(
-            'SELECT username, message_count FROM users WHERE id = ?',
-            user.id
-        );
+        const { rows } = await pool.query('SELECT username, message_count, call_count FROM users WHERE id = $1', [user.id]);
+        userData = rows[0];
     } catch (error) {
-        await interaction.reply(
-            'Ops 🫠! Não conseguimos encontrar os dados do usuário no momento... tente novamente mais tarde.'
-        );
+        await interaction.reply('Ops 🫠! Não conseguimos encontrar os dados do usuário no momento... tente novamente mais tarde.');
         console.error('Erro ao buscar dados do usuário:', error);
         return;
     }
@@ -43,21 +39,15 @@ async function execute(interaction) {
         .setTitle(`Olá ${userData.username}`)
         .setDescription('Seus pontos de atividade:')
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-        .addFields(
-            {
-                name: 'Mensagens de texto:',
-                value: `${userData.message_count} XP ✨`,
-                inline: true,
-            },
-            {
-                name: 'Atividades nas calls:',
-                value: 'Em breve...',
-                inline: false,
-            }
-        )
+        .addFields({
+            name: 'Mensagens de texto:', value: `${userData.message_count.toFixed(2)} XP ✨`, inline: true,
+        }, {
+            name: 'Atividades nas calls:', value: `${userData.call_count.toFixed(2)} XP ️`, inline: true,
+        })
         .setTimestamp()
-        .setFooter({ text: 'Bot Kingdom Rank' });
+        .setFooter({ text: `${rules.config.nome_do_bot}` });
 
+    //await interaction.deferReply();
     await interaction.reply({ embeds: [embed] });
 }
 
