@@ -1,38 +1,31 @@
 /**
  * @fileoverview arquivo principal do bot.
  */
-import { Client, Events, GatewayIntentBits, Collection } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import './config/env.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { openDb, createTable } from '../data/database.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { connectClient, createTable } from '../data/database.js';
+import rules from './utils/rules.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const BOT_RULES = () => {
-    try {
-        return JSON.parse(fs.readFileSync('./rules.json', 'utf8'));
-    } catch (error) {
-        console.error('Erro ao ler arquivo JSON:', error);
-        return {};
-    }
-};
-
+const dbClient = await connectClient();
 /**
  * @type {Client}
  * @description Cliente do bot para interagir com a API do Discord
  */
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates],
 });
 
-/**
- * @type {Collection}
- * @description Coleção de comandos do bot
- */
 client.commands = new Collection();
+/**
+ * @type {Set}
+ * @description Lista de usuários em call de voz
+ */
+const usersInVoice = new Set();
 
 /**
  * @description Função para carregar os comandos do bot automaticamente
@@ -42,14 +35,16 @@ const commandFiles = fs
     .readdirSync(commandsPath)
     .filter((file) => file.endsWith('.js'));
 
+/**
+ * @description Carregar os comandos do bot
+ */
 for (const file of commandFiles) {
     const { data, execute } = await import(path.join(commandsPath, file));
     client.commands.set(data.name, { data, execute });
 }
 
 /**
- * @event ClientReady
- * @description Evento que é emitido quando o bot está pronto para ser utilizado
+ * @description Evento para inicializar o bot
  */
 client.once(Events.ClientReady, async (readyClient) => {
     console.log(`Bot ${readyClient.user.tag} está online!`);
@@ -57,46 +52,79 @@ client.once(Events.ClientReady, async (readyClient) => {
 });
 
 /**
- * @event MessageCreate
- * @description Evento que é emitido quando uma mensagem é criada
+ * @description Evento para pontuar os usuários por mensagens enviadas
  */
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    const db = await openDb();
-    const user = await db.get(
-        'SELECT * FROM users WHERE id = ?',
-        message.author.id
-    );
+    const pontos = rules.points.mensagens || 1;
+    const user = await dbClient.query('SELECT * FROM users WHERE id = $1', [message.author.id]);
 
-    const rules = BOT_RULES();
-
-    if (rules[message.content]) {
-        await message.reply(rules[message.content]);
-        console.log(message.content);
-    }
-    if (user) {
-        await db.run(
-            `UPDATE users SET message_count = message_count + ${rules.points.mensagens} WHERE id = ?`,
-            message.author.id
-        );
+    if (user.rows.length > 0) {
+        await dbClient.query('UPDATE users SET message_count = message_count + $1 WHERE id = $2', [pontos, message.author.id]);
     } else {
-        await db.run(
-            'INSERT INTO users (id, username, message_count) VALUES (?, ?, ?)',
-            message.author.id,
-            message.author.username,
-            1
-        );
+        await dbClient.query('INSERT INTO users (id, username, message_count) VALUES ($1, $2, $3)', [message.author.id, message.author.username, pontos]);
+    }
+
+    await dbClient.query('INSERT INTO messages (id, user_id, points) VALUES ($1, $2, $3)', [message.id, message.author.id, pontos]);
+});
+
+/**
+ * @description Evento para remover os pontos de mensagens deletadas
+ */
+client.on('messageDelete', async (message) => {
+    if (!message.author || message.author.bot) return;
+    const msgData = await dbClient.query('SELECT points FROM messages WHERE id = $1', [message.id]);
+
+    if (msgData.rows.length > 0) {
+        await dbClient.query('UPDATE users SET message_count = message_count - $1 WHERE id = $2', [msgData.rows[0].points, message.author.id]);
+        await dbClient.query('DELETE FROM messages WHERE id = $1', [message.id]);
     }
 });
 
 /**
- * @event InteractionCreate
- * @description Evento que é emitido quando uma interação é criada
+ * @description Evento para pontuar os usuários em call de voz
+ */
+client.on('voiceStateUpdate', async (oldState, newState) => {
+    if (oldState.member.user.bot) return;
+    const userId = oldState.member.user.id;
+
+    if (oldState.channelId === null && newState.channelId !== null) {
+        usersInVoice.add(userId);
+    } else if (newState.channelId === null) {
+        usersInVoice.delete(userId);
+    }
+});
+
+/**
+ * @description Evento para pontuar os usuários em call de voz
+ */
+setInterval(async () => {
+    if (usersInVoice.size === 0) return;
+
+    for (const userId of usersInVoice) {
+        try {
+            const user = await dbClient.query('SELECT * FROM users WHERE id = $1', [userId]);
+
+            if (user.rows.length > 0) {
+                await dbClient.query('UPDATE users SET call_count = call_count + $1 WHERE id = $2', [rules.points.calls, userId]);
+            } else {
+                const member = client.users.cache.get(userId);
+                if (member) {
+                    await dbClient.query('INSERT INTO users (id, username, message_count, call_count) VALUES ($1, $2, $3, $4)', [userId, member.username, 0, rules.points.calls]);
+                }
+            }
+        } catch (error) {
+            console.error(`Erro ao processar o usuário ${userId}:`, error);
+        }
+    }
+}, rules.events.calls);
+
+/**
+ * @description Evento para ouvir as interações do bot
  */
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
-
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
 
@@ -105,14 +133,9 @@ client.on('interactionCreate', async (interaction) => {
     } catch (error) {
         console.error(error);
         await interaction.reply({
-            content: 'Houve um erro ao executar esse comando!',
-            ephemeral: true,
+            content: 'Houve um erro ao executar esse comando!', ephemeral: true,
         });
     }
 });
 
-/**
- * @description Iniciar o bot
- * @param {string} process.env.TOKEN - Token de autenticação do bot
- */
 client.login(process.env.TOKEN);
