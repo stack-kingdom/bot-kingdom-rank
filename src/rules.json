@@ -1,6 +1,13 @@
 {
     "points": {
-        "mensagens": 10,
-        "calls": 0.5
+        "mensagens": 0.010,
+        "calls": 0.005,
+        "nitro": 10
+    },
+    "events": {
+        "calls": 5000
+    },
+    "config": {
+        "nome_do_bot": "Bot Kingdom Rank"
     }
 }
