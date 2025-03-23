@@ -21,6 +21,7 @@ const client = new Client({
     password: process.env.DB_PASS,
     port: process.env.DB_PORT,
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+
 });
 
 /**
