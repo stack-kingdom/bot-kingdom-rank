@@ -8,11 +8,11 @@ import path from 'path';
 
 const { Client } = pg;
 
- /**
+/**
  * @description Cliente para conectar ao banco de dados
-  * @type {Object}
-  * @constant client
-  * @returns {Client}
+ * @type {Object}
+ * @constant client
+ * @returns {Client}
  */
 const client = new Client({
     user: process.env.DB_USER,
@@ -20,6 +20,7 @@ const client = new Client({
     database: process.env.DB_NAME,
     password: process.env.DB_PASS,
     port: process.env.DB_PORT,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 /**
@@ -33,10 +34,10 @@ const pool = new pg.Pool({
     port: process.env.DB_PORT,
 });
 
- /**
+/**
  * @description Função para conectar ao banco de dados
-  * @type {Function}
-  * @returns {Promise<Client>}
+ * @type {Function}
+ * @returns {Promise<Client>}
  */
 const connectClient = async () => {
     try {
@@ -67,4 +68,5 @@ const createTable = async () => {
     }
 };
 
-export {pool, connectClient, createTable };
+
+export { pool, connectClient, createTable };
