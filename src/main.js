@@ -6,12 +6,12 @@ import './config/env.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { connectClient, createTable } from '../data/database.js';
+import { pool, createTable } from '../data/database.js';
 import rules from './utils/rules.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dbClient = await connectClient();
+const dbClient = pool;
 /**
  * @type {Client}
  * @description Cliente do bot para interagir com a API do Discord

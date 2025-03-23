@@ -6,23 +6,6 @@ import '../src/config/env.js';
 import fs from 'fs/promises';
 import path from 'path';
 
-const { Client } = pg;
-
-/**
- * @description Cliente para conectar ao banco de dados
- * @type {Object}
- * @constant client
- * @returns {Client}
- */
-const client = new Client({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASS,
-    port: process.env.DB_PORT,
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-});
-
 /**
  * @description Pool para conectar ao banco de dados
  */
@@ -35,39 +18,34 @@ const pool = new pg.Pool({
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
-/**
- * @description Função para conectar ao banco de dados
- * @type {Function}
- * @returns {Promise<Client>}
- */
-const connectClient = async () => {
-    try {
-        await client.connect();
-        console.log('Conectado ao banco de dados com sucesso');
-        return client;
-    } catch (err) {
-        console.error('Erro ao conectar', err.stack);
-        process.exit(1);
-    }
-};
+// Listener para erros inesperados no pool
+pool.on('error', (err) => {
+    console.error('Erro inesperado no pool de conexões:', err.stack);
+});
 
 /**
  * @description Função para criar a tabela no banco de dados
  * @returns {Promise<void>}
  */
 const createTable = async () => {
+    let client;
     try {
-        if (!client) {
-            await connectClient();
-        }
+        client = await pool.connect();
+        console.log('Conexão obtida do pool com sucesso');
+
         const filePath = path.resolve('../data/schema.sql');
         const schema = await fs.readFile(filePath, 'utf-8');
         await client.query(schema);
         console.log('Tabela criada com sucesso');
     } catch (err) {
-        console.error('Erro ao executar query ou ler o arquivo', err.stack);
+        console.error('Erro ao executar query ou ler o arquivo:', err.stack);
+        throw err;
+    } finally {
+        if (client) {
+            client.release();
+            console.log('Conexão liberada de volta ao pool');
+        }
     }
 };
 
-
-export { pool, connectClient, createTable };
+export { pool, createTable };
