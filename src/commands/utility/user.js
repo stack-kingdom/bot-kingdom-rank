@@ -13,16 +13,28 @@ const data = new SlashCommandBuilder()
     .setName('user_info')
     .setDescription('Minhas pontuações de atividade');
 
- /**
- * @description Função para executar o comando
- * @param {CommandInteraction} interaction
-  * @return {Promise<void>}
- */
+/**
+* @description Função para executar o comando
+* @param {CommandInteraction} interaction
+ * @return {Promise<void>}
+*/
 async function execute(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     let userData;
     try {
-        const { rows } = await pool.query('SELECT username, message_count, call_count FROM users WHERE id = $1', [user.id]);
+        const { rows } = await pool.query(`
+            WITH ranking AS (
+                SELECT id,
+                       username,
+                       message_count,
+                       call_count,
+                       RANK() OVER (ORDER BY (message_count + call_count) DESC) as rank_position
+                FROM users
+            )
+            SELECT username, message_count, call_count, rank_position 
+            FROM ranking 
+            WHERE id = $1
+        `, [user.id]);
         userData = rows[0];
     } catch (error) {
         await interaction.reply('Ops 🫠! Não conseguimos encontrar os dados do usuário no momento... tente novamente mais tarde.');
@@ -43,11 +55,12 @@ async function execute(interaction) {
             name: 'Mensagens de texto:', value: `${userData.message_count.toFixed(2)} XP ✨`, inline: true,
         }, {
             name: 'Atividades nas calls:', value: `${userData.call_count.toFixed(2)} XP ️`, inline: true,
+        }, {
+            name: 'Posição no ranking:', value: `${userData.rank_position}`, inline: false,
         })
         .setTimestamp()
         .setFooter({ text: `${rules.config.nome_do_bot}` });
-
-    //await interaction.deferReply();
+        
     await interaction.reply({ embeds: [embed] });
 }
 
