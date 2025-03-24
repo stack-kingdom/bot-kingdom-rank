@@ -60,8 +60,9 @@ async function execute(interaction) {
         })
         .setTimestamp()
         .setFooter({ text: `${rules.config.nome_do_bot}` });
-        
-    await interaction.reply({ embeds: [embed] });
+
+    await interaction.deferReply();
+    await interaction.editReply({ embeds: [embed] });
 }
 
 export { data, execute };
