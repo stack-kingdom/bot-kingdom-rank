@@ -1,15 +1,16 @@
 /**
- * @fileoverview Arquivo responsável por criar o banco de dados.
+ * @fileoverview Arquivo responsável por criar e gerenciar a conexão com o banco de dados.
  */
 import pg from 'pg';
 import '../src/config/env.js';
-import fs from 'fs/promises';
-import path from 'path';
+
+const __dirname_database = import.meta.dir; // Diretório de database.js
 
 /**
- * @description Pool para conectar ao banco de dados
+ * @description Configuração do pool de conexões
+ * @type {Object}
  */
-let pool = new pg.Pool({
+const poolConfig = {
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
@@ -20,47 +21,64 @@ let pool = new pg.Pool({
     idleTimeoutMillis: 30000,
     max: 10,
     keepAlive: true,
-});
-
+};
 
 /**
- * @description Função para reconectar ao banco de dados
- * @returns {void}
+ * @description Validação das variáveis de ambiente necessárias
+ * @throws {Error} Se alguma variável de ambiente estiver faltando
  */
-function reconnectPool() {
-    console.log('Tentando reconectar ao banco de dados...');
-    pool.end(() => {
-        const newPool = new pg.Pool({
-            user: process.env.DB_USER,
-            host: process.env.DB_HOST,
-            database: process.env.DB_NAME,
-            password: process.env.DB_PASS,
-            port: process.env.DB_PORT,
-            ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-            connectionTimeoutMillis: 5000,
-            idleTimeoutMillis: 30000,
-            max: 10,
-            keepAlive: true,
-        });
-        newPool.on('error', (err) => {
-            console.error('Erro no pool, tentando reconectar:', err.stack);
-            reconnectPool();
-        });
-        pool = newPool;
-        console.log('Novo pool criado com sucesso');
-    });
+const validateEnv = () => {
+    const requiredEnvVars = ['DB_USER', 'DB_HOST', 'DB_NAME', 'DB_PASS', 'DB_PORT'];
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+        throw new Error(`Variáveis de ambiente faltando: ${missingVars.join(', ')}`);
+    }
+};
+
+/**
+ * @description Pool para conectar ao banco de dados
+ */
+let pool;
+
+try {
+    validateEnv();
+    pool = new pg.Pool(poolConfig);
+} catch (error) {
+    console.error('Erro ao criar pool de conexões:', error.message);
+    process.exit(1);
 }
 
 /**
- * @description Evento para tratar erro no pool de conexões
+ * @description Função para reconectar ao banco de dados
+ * @returns {Promise<void>}
  */
-pool.on('error', (err) => {
-    console.error('Erro inesperado no pool de conexões:', err.stack);
-    reconnectPool();
-});
+async function reconnectPool() {
+    console.log('Tentando reconectar ao banco de dados...');
+    try {
+        await pool.end();
+        pool = new pg.Pool(poolConfig);
+        pool.on('error', handlePoolError);
+        console.log('Novo pool criado com sucesso');
+    } catch (error) {
+        console.error('Erro ao reconectar:', error.message);
+        setTimeout(reconnectPool, 5000);
+    }
+}
 
 /**
- * @description Função para criar a tabela no banco de dados
+ * @description Função para tratar erros do pool
+ * @param {Error} err - Erro ocorrido
+ */
+function handlePoolError(err) {
+    console.error('Erro inesperado no pool de conexões:', err.message);
+    reconnectPool();
+}
+
+pool.on('error', handlePoolError);
+
+/**
+ * @description Função para criar as tabelas no banco de dados
  * @returns {Promise<void>}
  */
 const createTable = async () => {
@@ -69,13 +87,25 @@ const createTable = async () => {
         client = await pool.connect();
         console.log('Conexão obtida do pool com sucesso');
 
-        const filePath = path.resolve('../data/schema.sql');
-        const schema = await fs.readFile(filePath, 'utf-8');
-        await client.query(schema);
-        console.log('Tabela criada com sucesso');
+        const schemaPath = `${__dirname_database}/schema.sql`; // Caminho relativo ao database.js
+        const file = Bun.file(schemaPath);
+        const schema = await file.text();
+        
+        const commands = schema
+            .split(';')
+            .map(cmd => cmd.trim())
+            .filter(cmd => cmd.length > 0);
+
+        for (const command of commands) {
+            await client.query(command + ';');
+        }
+        
+        console.log('Tabelas criadas com sucesso');
     } catch (err) {
-        console.error('Erro ao executar query ou ler o arquivo:', err.stack);
-        throw err;
+        console.error('Erro ao executar query ou ler o arquivo:', err.message);
+        // Log do erro original para mais detalhes, se necessário
+        // console.error(err);
+        throw err; // Re-lança o erro para que main.js possa saber
     } finally {
         if (client) {
             client.release();
