@@ -3,14 +3,11 @@
  */
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import './config/env.js';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { Glob} from 'bun'
 import { pool, createTable } from '../data/database.js';
 import rules from './utils/rules.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = import.meta.dirname;
 const dbClient = pool;
 /**
  * @type {Client}
@@ -30,16 +27,16 @@ const usersInVoice = new Set();
 /**
  * @description Função para carregar os comandos do bot automaticamente
  */
-const commandsPath = path.join(__dirname, 'commands/utility');
-const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter((file) => file.endsWith('.js'));
+const commandsPath = `${__dirname}/commands/utility`;
+
+const glob = new Glob("*.js");
+const commandFiles = [...glob.scanSync(commandsPath)];
 
 /**
  * @description Carregar os comandos do bot
  */
 for (const file of commandFiles) {
-    const { data, execute } = await import(path.join(commandsPath, file));
+    const { data, execute } = await import(`${commandsPath}/${file}`);
     client.commands.set(data.name, { data, execute });
 }
 
