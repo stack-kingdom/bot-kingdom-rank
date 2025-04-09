@@ -1,27 +1,24 @@
 /**
  * @fileoverview arquivo com as regras do bot.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = import.meta.dir;
 
 /**
  * @description Função para carregar as regras do bot
- * @returns {Object}
+ * @returns {Promise<Object>}
  */
-const BOT_RULES = () => {
+const loadBotRules = async () => {
     try {
-        const rulesPath = path.resolve(__dirname, '../rules.json');
-        return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
+        const rulesPath = `${__dirname}/../rules.json`;
+        const file = Bun.file(rulesPath);
+        return await file.json();
     } catch (error) {
         console.error('Erro ao ler arquivo JSON:', error);
-        return {};
+        return {}; // Retorna objeto vazio em caso de erro
     }
 };
 
-const rules = BOT_RULES();
+const rules = await loadBotRules();
 
 export default rules;
