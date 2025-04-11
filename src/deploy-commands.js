@@ -5,6 +5,7 @@
 import { REST, Routes } from 'discord.js';
 import './config/env.js';
 import { readdirSync } from 'node:fs';
+import { Glob } from 'bun';
 
 const __dirname = import.meta.dirname;
 
@@ -23,13 +24,13 @@ const commandsPath = `${__dirname}/commands/utility`;
  * @type {Array}
  * @description Lista de arquivos de comandos do bot
  */
-const commandFiles = readdirSync(commandsPath);
-const jsFiles = commandFiles.filter((file) => file.endsWith('.js'));
+const glob = new Glob('**/*.js');
+const commandFiles = [...glob.scanSync(`${commandsPath}`)];
 
 /**
  * @description Loop para adicionar os comandos na lista de comandos
  */
-for (const file of jsFiles) {
+for (const file of commandFiles) {
     const { data } = await import(`${commandsPath}/${file}`);
     commands.push(data.toJSON());
 }
@@ -46,7 +47,10 @@ const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 try {
     console.log('Iniciando o deploy dos comandos...');
     await rest.put(
-        Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+        Routes.applicationGuildCommands(
+            process.env.CLIENT_ID,
+            process.env.GUILD_ID
+        ),
         { body: commands }
     );
 
