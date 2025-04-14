@@ -2,20 +2,19 @@
  * @fileoverview arquivo com as regras do bot.
  */
 
-const __dirname = import.meta.dir;
-
 /**
  * @description Função para carregar as regras do bot
  * @returns {Promise<Object>}
  */
 const loadBotRules = async () => {
     try {
-        const rulesPath = `${__dirname}/../rules.json`;
+        const rulesPath = `${import.meta.dir}/../rules.json`;
         const file = Bun.file(rulesPath);
-        return await file.json();
+        const rulesData = await file.json();
+        return rulesData;
     } catch (error) {
         console.error('Erro ao ler arquivo JSON:', error);
-        return {}; // Retorna objeto vazio em caso de erro
+        return {};
     }
 };
 
