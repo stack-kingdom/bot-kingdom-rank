@@ -10,19 +10,32 @@ import { pool } from '../../../data/database.js';
  * @description Dados do comando
  */
 const data = new SlashCommandBuilder()
-    .setName('user_info')
-    .setDescription('Minhas pontuações de atividade');
+    .setName('perfil')
+    .setDescription('Exibir suas pontuações de atividade')
+    .setDescription('Comandos relacionados ao perfil de usuário')
+    .addSubcommand((subcommand) =>
+        subcommand
+            .setName('usuário')
+            .setDescription('Exibir suas pontuações de atividade')
+            .addUserOption((option) =>
+                option
+                    .setName('user')
+                    .setDescription('Usuário para verificar (opcional)')
+                    .setRequired(false)
+            )
+    );
 
 /**
-* @description Função para executar o comando
-* @param {CommandInteraction} interaction
+ * @description Função para executar o comando
+ * @param {CommandInteraction} interaction
  * @return {Promise<void>}
-*/
+ */
 async function execute(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     let userData;
     try {
-        const { rows } = await pool.query(`
+        const { rows } = await pool.query(
+            `
             WITH ranking AS (
                 SELECT id,
                        username,
@@ -34,10 +47,14 @@ async function execute(interaction) {
             SELECT username, message_count, call_count, rank_position 
             FROM ranking 
             WHERE id = $1
-        `, [user.id]);
+        `,
+            [user.id]
+        );
         userData = rows[0];
     } catch (error) {
-        await interaction.reply('Ops 🫠! Não conseguimos encontrar os dados do usuário no momento... tente novamente mais tarde.');
+        await interaction.reply(
+            'Ops 🫠! Não conseguimos encontrar os dados do usuário no momento... tente novamente mais tarde.'
+        );
         console.error('Erro ao buscar dados do usuário:', error);
         return;
     }
@@ -51,13 +68,23 @@ async function execute(interaction) {
         .setTitle(`Olá ${userData.username}`)
         .setDescription('Seus pontos de atividade:')
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-        .addFields({
-            name: 'Mensagens de texto:', value: `${userData.message_count.toFixed(2)} XP ✨`, inline: true,
-        }, {
-            name: 'Atividades nas calls:', value: `${userData.call_count.toFixed(2)} XP ️`, inline: true,
-        }, {
-            name: 'Posição no ranking:', value: `${userData.rank_position}`, inline: false,
-        })
+        .addFields(
+            {
+                name: 'Mensagens de texto:',
+                value: `${userData.message_count.toFixed(2)} XP ✨`,
+                inline: true,
+            },
+            {
+                name: 'Atividades nas calls:',
+                value: `${userData.call_count.toFixed(2)} XP ️`,
+                inline: true,
+            },
+            {
+                name: 'Posição no ranking:',
+                value: `${userData.rank_position}`,
+                inline: false,
+            }
+        )
         .setTimestamp()
         .setFooter({ text: `${rules.config.nome_do_bot}` });
 
