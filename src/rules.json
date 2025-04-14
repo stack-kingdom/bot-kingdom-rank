@@ -8,6 +8,7 @@
         "calls": 5000
     },
     "config": {
-        "nome_do_bot": "Bot Kingdom Rank"
+        "nome_do_bot": "Ava",
+        "nome_server": "Stack Kingdom"
     }
 }
