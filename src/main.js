@@ -2,19 +2,21 @@
  * @fileoverview arquivo principal do bot.
  */
 import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
-import './config/env.js';
-import { Glob} from 'bun'
+import { Glob } from 'bun';
 import { pool, createTable } from '../data/database.js';
 import rules from './utils/rules.js';
 
-const __dirname = import.meta.dirname;
 const dbClient = pool;
 /**
  * @type {Client}
  * @description Cliente do bot para interagir com a API do Discord
  */
-const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates],
+export const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildVoiceStates,
+    ],
 });
 
 client.commands = new Collection();
@@ -24,19 +26,14 @@ client.commands = new Collection();
  */
 const usersInVoice = new Set();
 
-/**
- * @description Função para carregar os comandos do bot automaticamente
- */
-const commandsPath = `${__dirname}/commands/utility`;
-
-const glob = new Glob("*.js");
-const commandFiles = [...glob.scanSync(commandsPath)];
+const glob = new Glob('./commands/**/*.js');
+const commandFiles = [...glob.scanSync(import.meta.dir)];
 
 /**
  * @description Carregar os comandos do bot
  */
 for (const file of commandFiles) {
-    const { data, execute } = await import(`${commandsPath}/${file}`);
+    const { data, execute } = await import(`${import.meta.dir}/${file}`);
     client.commands.set(data.name, { data, execute });
 }
 
@@ -55,15 +52,26 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     const pontos = rules.points.mensagens || 1;
-    const user = await dbClient.query('SELECT * FROM users WHERE id = $1', [message.author.id]);
+    const user = await dbClient.query('SELECT * FROM users WHERE id = $1', [
+        message.author.id,
+    ]);
 
     if (user.rows.length > 0) {
-        await dbClient.query('UPDATE users SET message_count = message_count + $1 WHERE id = $2', [pontos, message.author.id]);
+        await dbClient.query(
+            'UPDATE users SET message_count = message_count + $1 WHERE id = $2',
+            [pontos, message.author.id]
+        );
     } else {
-        await dbClient.query('INSERT INTO users (id, username, message_count) VALUES ($1, $2, $3)', [message.author.id, message.author.username, pontos]);
+        await dbClient.query(
+            'INSERT INTO users (id, username, message_count) VALUES ($1, $2, $3)',
+            [message.author.id, message.author.username, pontos]
+        );
     }
 
-    await dbClient.query('INSERT INTO messages (id, user_id, points) VALUES ($1, $2, $3)', [message.id, message.author.id, pontos]);
+    await dbClient.query(
+        'INSERT INTO messages (id, user_id, points) VALUES ($1, $2, $3)',
+        [message.id, message.author.id, pontos]
+    );
 });
 
 /**
@@ -71,11 +79,19 @@ client.on('messageCreate', async (message) => {
  */
 client.on('messageDelete', async (message) => {
     if (!message.author || message.author.bot) return;
-    const msgData = await dbClient.query('SELECT points FROM messages WHERE id = $1', [message.id]);
+    const msgData = await dbClient.query(
+        'SELECT points FROM messages WHERE id = $1',
+        [message.id]
+    );
 
     if (msgData.rows.length > 0) {
-        await dbClient.query('UPDATE users SET message_count = message_count - $1 WHERE id = $2', [msgData.rows[0].points, message.author.id]);
-        await dbClient.query('DELETE FROM messages WHERE id = $1', [message.id]);
+        await dbClient.query(
+            'UPDATE users SET message_count = message_count - $1 WHERE id = $2',
+            [msgData.rows[0].points, message.author.id]
+        );
+        await dbClient.query('DELETE FROM messages WHERE id = $1', [
+            message.id,
+        ]);
     }
 });
 
@@ -101,14 +117,23 @@ setInterval(async () => {
 
     for (const userId of usersInVoice) {
         try {
-            const user = await dbClient.query('SELECT * FROM users WHERE id = $1', [userId]);
+            const user = await dbClient.query(
+                'SELECT * FROM users WHERE id = $1',
+                [userId]
+            );
 
             if (user.rows.length > 0) {
-                await dbClient.query('UPDATE users SET call_count = call_count + $1 WHERE id = $2', [rules.points.calls, userId]);
+                await dbClient.query(
+                    'UPDATE users SET call_count = call_count + $1 WHERE id = $2',
+                    [rules.points.calls, userId]
+                );
             } else {
                 const member = client.users.cache.get(userId);
                 if (member) {
-                    await dbClient.query('INSERT INTO users (id, username, message_count, call_count) VALUES ($1, $2, $3, $4)', [userId, member.username, 0, rules.points.calls]);
+                    await dbClient.query(
+                        'INSERT INTO users (id, username, message_count, call_count) VALUES ($1, $2, $3, $4)',
+                        [userId, member.username, 0, rules.points.calls]
+                    );
                 }
             }
         } catch (error) {
@@ -117,6 +142,35 @@ setInterval(async () => {
     }
 }, rules.events.calls);
 
+client.on('ready', async () => {
+    console.log(`Bot logado como ${client.user.tag}`);
+
+    const allowedGuildId = Bun.env.GUILD_ID;
+    const guilds = client.guilds.cache;
+
+    for (const guild of guilds.values()) {
+        if (guild.id !== allowedGuildId) {
+            try {
+                await guild.leave();
+                console.log(`Bot saiu de ${guild.name} (não autorizado).`);
+            } catch (error) {
+                console.error(`Erro ao sair de ${guild.name}:`, error);
+            }
+        }
+    }
+});
+
+client.on('guildCreate', async (guild) => {
+    const allowedGuildId = Bun.env.GUILD_ID;
+    if (guild.id !== allowedGuildId) {
+        try {
+            await guild.leave();
+            console.log(`Bot saiu de ${guild.name} (não autorizado).`);
+        } catch (error) {
+            console.error(`Erro ao sair de ${guild.name}:`, error);
+        }
+    }
+});
 /**
  * @description Evento para ouvir as interações do bot
  */
@@ -130,9 +184,10 @@ client.on('interactionCreate', async (interaction) => {
     } catch (error) {
         console.error(error);
         await interaction.reply({
-            content: 'Houve um erro ao executar esse comando!', ephemeral: true,
+            content: 'Houve um erro ao executar esse comando!',
+            ephemeral: true,
         });
     }
 });
 
-client.login(process.env.TOKEN);
+client.login(Bun.env.TOKEN);
