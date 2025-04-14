@@ -12,8 +12,11 @@ const callsRounded = Math.round(rules.events.calls / 1000);
  * @type {Object}
  */
 const data = new SlashCommandBuilder()
-    .setName('rules')
-    .setDescription('Exibir regras de pontuação');
+    .setName('regras')
+    .setDescription('Exibir regras de pontos')
+    .addSubcommand((subcommand) =>
+        subcommand.setName('pontos').setDescription('Exibir regras de pontos')
+    );
 
 /**
  * @description Função para executar o comando
@@ -23,7 +26,7 @@ const data = new SlashCommandBuilder()
 async function execute(interaction) {
     const embed = new EmbedBuilder()
         .setColor('#0099ff')
-        .setTitle('Regras de pontos')
+        .setTitle('Regras')
         .setImage(
             'https://i.pinimg.com/736x/b6/97/0b/b6970ba1e6d8773088b5dc4af68cb4f4.jpg'
         )
