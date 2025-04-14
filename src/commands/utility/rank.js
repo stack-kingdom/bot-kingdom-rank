@@ -14,7 +14,12 @@ import rules from '../../utils/rules.js';
  */
 const data = new SlashCommandBuilder()
     .setName('rank')
-    .setDescription('Exibir ranking de atividade dos usuários');
+    .setDescription('Exibir ranking de usuários')
+    .addSubcommand((subcommand) =>
+        subcommand
+            .setName('atividade')
+            .setDescription('Exibir ranking de usuários')
+    );
 /**
  * @description Função para executar o comando
  * @param {CommandInteraction} interaction
