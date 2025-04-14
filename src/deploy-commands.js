@@ -4,7 +4,6 @@
 
 import { REST, Routes } from 'discord.js';
 import { Glob } from 'bun';
-import './config/env.js';
 
 const glob = new Glob('./commands/**/*.js');
 const commands = [];
@@ -22,7 +21,7 @@ for (const file of commandFiles) {
  * @type {REST}
  * @description Cliente para interagir com a API do Discord
  */
-const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+const rest = new REST({ version: '10' }).setToken(Bun.env.TOKEN);
 
 /**
  * @description Função para deploy dos comandos do bot
@@ -30,7 +29,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 try {
     console.log('Iniciando o deploy dos comandos...');
     await rest.put(
-        Routes.applicationCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+        Routes.applicationCommands(Bun.env.CLIENT_ID, Bun.env.GUILD_ID),
         { body: commands }
     );
 
