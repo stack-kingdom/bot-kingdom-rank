@@ -6,7 +6,7 @@
   "author": "Gustavo Oly <gustavooly.dev@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "start": "node src/main.js"
+    "start": "bun run src/main.js"
   },
   "type": "module",
   "dependencies": {
