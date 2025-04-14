@@ -3,39 +3,22 @@
  */
 
 import { REST, Routes } from 'discord.js';
-import './config/env.js';
-import { readdirSync } from 'node:fs';
 import { Glob } from 'bun';
+import './config/env.js';
 
-const __dirname = import.meta.dirname;
-
-/**
- * @type {Array}
- * @description Lista de comandos do bot
- */
+const glob = new Glob('./commands/**/*.js');
 const commands = [];
-
-/**
- * @description Função para carregar os comandos do bot automaticamente
- */
-const commandsPath = `${__dirname}/commands/utility`;
-
-/**
- * @type {Array}
- * @description Lista de arquivos de comandos do bot
- */
-const glob = new Glob('**/*.js');
-const commandFiles = [...glob.scanSync(`${commandsPath}`)];
+const commandFiles = [...glob.scanSync(import.meta.dir)];
 
 /**
  * @description Loop para adicionar os comandos na lista de comandos
  */
 for (const file of commandFiles) {
-    const { data } = await import(`${commandsPath}/${file}`);
+    const { data } = await import(file);
     commands.push(data.toJSON());
 }
 
-/**
+/**'
  * @type {REST}
  * @description Cliente para interagir com a API do Discord
  */
@@ -47,10 +30,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 try {
     console.log('Iniciando o deploy dos comandos...');
     await rest.put(
-        Routes.applicationGuildCommands(
-            process.env.CLIENT_ID,
-            process.env.GUILD_ID
-        ),
+        Routes.applicationCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
         { body: commands }
     );
 
