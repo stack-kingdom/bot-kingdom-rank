@@ -4,8 +4,8 @@ import rules from '../../utils/rules.js';
 import { generateAvaSystemPrompt } from '../../prompts/avaSystemPrompt.js';
 
 const data = new SlashCommandBuilder()
-    .setName('question')
-    .setDescription('Pergunte algo à Ava (Nossa assistente virtual)')
+    .setName('ava')
+    .setDescription('Comandos relacionados à Ava')
     .addStringOption((option) =>
         option
             .setName('pergunta')
