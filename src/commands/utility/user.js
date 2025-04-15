@@ -12,7 +12,6 @@ import { pool } from '../../../data/database.js';
 const data = new SlashCommandBuilder()
     .setName('perfil')
     .setDescription('Exibir suas pontuações de atividade')
-    .setDescription('Comandos relacionados ao perfil de usuário')
     .addSubcommand((subcommand) =>
         subcommand
             .setName('usuário')
