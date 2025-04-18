@@ -1,8 +1,12 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ChannelType } from 'discord.js';
 import { Mistral } from '@mistralai/mistralai';
 import rules from '../../utils/rules.js';
 import { generateAvaSystemPrompt } from '../../prompts/avaSystemPrompt.js';
 
+/**
+ * @description Comando para interagir com a IA Ava.
+ * @type SlashCommandOptionsOnlyBuilder
+ */
 const data = new SlashCommandBuilder()
     .setName('ava')
     .setDescription('Comandos relacionados à Ava')
@@ -13,6 +17,56 @@ const data = new SlashCommandBuilder()
             .setRequired(true)
     );
 
+/**
+ * @description Função para gerar o contexto do servidor.
+ * @param {object} interaction - A interação do usuário.
+ * @returns {object} - O contexto do servidor.
+ */
+const contextoServidor = async (interaction) => {
+    const criador = '<@786049927787839519>';
+    const guild = interaction.guild;
+    const userId = interaction.user.id;
+    const userDisplayName = interaction.user.displayName;
+    const nomeServer = guild.name;
+    const memberCount = guild.memberCount;
+
+    await guild.members.fetch();
+
+    const todosCargos = guild.roles.cache
+        .filter((role) => role.name !== '@everyone')
+        .map((role) => `'${role.name}' (ID: ${role.id})`)
+        .join(', ');
+    const todosCanais = guild.channels.cache
+        .filter((channel) => channel.type !== ChannelType.GuildCategory)
+        .map((channel) => `#${channel.name} (ID: ${channel.id})`)
+        .join(', ');
+    const todosMembros =
+        guild.members.cache
+            .filter((member) => member.user && !member.user.bot)
+            .map((member) => `<@${member.id}>`)
+            .slice(0, 100)
+            .join(', ') || 'Nenhum membro encontrado.';
+    console.log(todosMembros);
+    const membrosOnline =
+        guild.members.cache
+            .filter((member) => member.presence?.status === 'online')
+            .map((member) => `<@${member.id}>`)
+            .join(', ') || 'Nenhum membro online encontrado.';
+
+    return {
+        criador,
+        userId,
+        userDisplayName,
+        nomeServer,
+        memberCount,
+        rules,
+        todosCargos,
+        todosCanais,
+        todosMembros,
+        membrosOnline,
+    };
+};
+
 async function execute(interaction) {
     const question = interaction.options.getString('pergunta');
     if (!process.env.MISTRAL_API_KEY) {
@@ -22,13 +76,17 @@ async function execute(interaction) {
         });
         return;
     }
-    const userQuestion = interaction.user.displayName;
-    const userId = interaction.user.id;
-    const nomeServer = interaction.guild.name;
-    const memberCount = interaction.client.guilds.cache.reduce(
-        (acc, guild) => acc + guild.memberCount,
-        0
-    );
+
+    const canMention = interaction.channel
+        .permissionsFor(interaction.client.user)
+        .has('MentionEveryone');
+    if (!canMention) {
+        console.warn(
+            `Bot não tem permissão para mencionar membros no canal ${interaction.channel.name} (ID: ${interaction.channel.id}).`
+        );
+    }
+
+    const contexto = await contextoServidor(interaction);
 
     const mistral = new Mistral({
         apiKey: process.env.MISTRAL_API_KEY,
@@ -38,11 +96,7 @@ async function execute(interaction) {
 
     try {
         const systemContent = generateAvaSystemPrompt({
-            userId,
-            userQuestion,
-            nomeServer,
-            memberCount,
-            rules,
+            ...contexto,
         });
 
         const result = await mistral.chat.stream({
@@ -60,6 +114,7 @@ async function execute(interaction) {
                 },
             ],
         });
+
         let fullResponse = '';
         for await (const chunk of result) {
             const streamText = chunk.data.choices[0]?.delta?.content;
@@ -67,8 +122,9 @@ async function execute(interaction) {
                 fullResponse += streamText;
             }
         }
+
         const embed = new EmbedBuilder()
-            .setColor('#0099ff')
+            .setColor(rules.config.cor_bot)
             .setDescription(fullResponse || '...')
             .setTimestamp()
             .setFooter({ text: `${rules.config.nome_do_bot}` });
