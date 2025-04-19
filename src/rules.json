@@ -9,6 +9,7 @@
     },
     "config": {
         "nome_do_bot": "Ava",
-        "nome_server": "Stack Kingdom"
+        "nome_server": "Stack Kingdom",
+        "cor_bot": "#da4776"
     }
 }
