@@ -1,7 +1,11 @@
-import { SlashCommandBuilder, EmbedBuilder, ChannelType } from 'discord.js';
-import { Mistral } from '@mistralai/mistralai';
+/**
+ * @fileoverview Comando para interagir com a IA Ava.
+ */
+
+import { SlashCommandBuilder, ChannelType } from 'discord.js';
 import rules from '../../utils/rules.js';
 import { generateAvaSystemPrompt } from '../../prompts/avaSystemPrompt.js';
+import Models from '../../utils/Models.js';
 
 /**
  * @description Comando para interagir com a IA Ava.
@@ -44,7 +48,7 @@ const contextoServidor = async (interaction) => {
         guild.members.cache
             .filter((member) => member.user && !member.user.bot)
             .map((member) => `<@${member.id}>`)
-            .slice(0, 100)
+            .slice(0, 20)
             .join(', ') || 'Nenhum membro encontrado.';
     console.log(todosMembros);
     const membrosOnline =
@@ -67,90 +71,75 @@ const contextoServidor = async (interaction) => {
     };
 };
 
-async function execute(interaction) {
-    const question = interaction.options.getString('pergunta');
-    if (!process.env.MISTRAL_API_KEY) {
-        await interaction.reply({
-            content: 'Erro: Chave da API não configurada.',
-            ephemeral: true,
-        });
-        return;
-    }
-
-    const canMention = interaction.channel
-        .permissionsFor(interaction.client.user)
-        .has('MentionEveryone');
-    if (!canMention) {
-        console.warn(
-            `Bot não tem permissão para mencionar membros no canal ${interaction.channel.name} (ID: ${interaction.channel.id}).`
-        );
-    }
-
+/**
+ * @description Função para processar a pergunta e gerar a resposta.
+ * @param {object} interaction - A interação do usuário.
+ * @param {string} question - A pergunta feita pelo usuário.
+ * @param {object} contextoMensagens - O contexto das mensagens.
+ * @returns {string} - A resposta gerada pela IA.
+ */
+async function processarPergunta(
+    interaction,
+    question,
+    contextoMensagens = {}
+) {
     const contexto = await contextoServidor(interaction);
 
-    const mistral = new Mistral({
-        apiKey: process.env.MISTRAL_API_KEY,
+    let contextoChat = '';
+    if (contextoMensagens.referencedMessage) {
+        const { author, content, isBot } = contextoMensagens.referencedMessage;
+        const authorName = isBot ? 'Ava' : author.username;
+        contextoChat += `Mensagem referenciada por ${authorName}: "${content}"\n`;
+    }
+    if (contextoMensagens.historico && contextoMensagens.historico.length > 0) {
+        contextoChat += 'Histórico recente do canal:\n';
+        contextoMensagens.historico.forEach((msg) => {
+            const authorName = msg.isBot ? 'Ava' : msg.author.username;
+            contextoChat += `[${authorName}]: ${msg.content}\n`;
+        });
+    }
+
+    const systemContent = generateAvaSystemPrompt({
+        ...contexto,
+        contextoChat,
     });
+
+    const result = await Models.run({
+        question,
+        systemContent,
+    });
+
+    if (typeof result === 'string') return result;
+
+    let fullResponse = '';
+    for await (const chunk of result) {
+        const streamText = chunk.data.choices[0]?.delta?.content;
+        if (streamText) {
+            fullResponse += streamText;
+        }
+    }
+
+    return fullResponse || '...';
+}
+
+/**
+ * @description Função para executar o comando.
+ * @param {object} interaction - A interação do usuário.
+ */
+async function execute(interaction) {
+    const question = interaction.options.getString('pergunta');
 
     await interaction.deferReply();
 
     try {
-        const systemContent = generateAvaSystemPrompt({
-            ...contexto,
-        });
-
-        const result = await mistral.chat.stream({
-            model: 'mistral-small-latest',
-            temperature: 0.2,
-            max_tokens: 400,
-            messages: [
-                {
-                    role: 'system',
-                    content: systemContent,
-                },
-                {
-                    role: 'user',
-                    content: question,
-                },
-            ],
-        });
-
-        let fullResponse = '';
-        for await (const chunk of result) {
-            const streamText = chunk.data.choices[0]?.delta?.content;
-            if (streamText) {
-                fullResponse += streamText;
-            }
-        }
-
-        const embed = new EmbedBuilder()
-            .setColor(rules.config.cor_bot)
-            .setDescription(fullResponse || '...')
-            .setTimestamp()
-            .setFooter({ text: `${rules.config.nome_do_bot}` });
-
-        await interaction.editReply({ embeds: [embed] });
+        const resposta = await processarPergunta(interaction, question);
+        await interaction.editReply(resposta);
     } catch (error) {
-        console.error(
-            'Erro ao chamar a API Mistral ou processar stream:',
-            error
-        );
-        if (interaction.deferred || interaction.replied) {
-            await interaction
-                .editReply({
-                    content: 'Ocorreu um erro ao processar sua pergunta.',
-                    embeds: [],
-                })
-                .catch(console.error);
-        } else {
-            await interaction
-                .reply({
-                    content: 'Ocorreu um erro ao processar sua pergunta.',
-                    ephemeral: true,
-                })
-                .catch(console.error);
-        }
+        console.error('Erro ao processar a pergunta:', error);
+        await interaction.editReply({
+            content: 'Ocorreu um erro ao processar sua pergunta.',
+        });
     }
 }
 
-export { data, execute };
+export { data, execute, processarPergunta };
