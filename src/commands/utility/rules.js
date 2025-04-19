@@ -25,7 +25,7 @@ const data = new SlashCommandBuilder()
  */
 async function execute(interaction) {
     const embed = new EmbedBuilder()
-        .setColor('#0099ff')
+        .setColor(rules.config.cor_bot)
         .setTitle('Regras')
         .setImage(
             'https://i.pinimg.com/736x/b6/97/0b/b6970ba1e6d8773088b5dc4af68cb4f4.jpg'
