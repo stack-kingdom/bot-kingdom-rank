@@ -63,7 +63,7 @@ async function execute(interaction) {
     }
 
     const embed = new EmbedBuilder()
-        .setColor('#0099ff')
+        .setColor(rules.config.cor_bot)
         .setTitle(`Olá ${userData.username}`)
         .setDescription('Seus pontos de atividade:')
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
