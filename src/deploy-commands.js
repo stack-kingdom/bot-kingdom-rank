@@ -28,9 +28,12 @@ const rest = new REST({ version: '10' }).setToken(Bun.env.TOKEN);
  */
 try {
     console.log('Iniciando o deploy dos comandos...');
-    await rest.put(Routes.applicationCommands(Bun.env.CLIENT_ID), {
-        body: commands,
-    });
+    const comandos = await rest.put(
+        Routes.applicationGuildCommands(Bun.env.CLIENT_ID, Bun.env.GUILD_ID),
+        {
+            body: commands,
+        }
+    );
 
     console.log('Comandos deployados com sucesso!');
 } catch (error) {
