@@ -12,7 +12,6 @@ import { Glob } from 'bun';
 import { pool, createTable } from '../data/database.js';
 import rules from './utils/rules.js';
 import { processarPergunta } from './commands/ai/ava.js';
-import { ObjectT } from '@mistralai/mistralai/models/components/completionjobout.js';
 
 const dbClient = pool;
 /**
