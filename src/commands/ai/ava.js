@@ -5,7 +5,7 @@
 import { SlashCommandBuilder, ChannelType } from 'discord.js';
 import rules from '../../utils/rules.js';
 import { generateAvaSystemPrompt } from '../../prompts/avaSystemPrompt.js';
-import Models from '../../utils/Models.js';
+import { Models, MODEL_CONFIG } from '../../utils/Models.js';
 
 /**
  * @description Comando para interagir com a IA Ava.
@@ -112,10 +112,19 @@ async function processarPergunta(
     if (typeof result === 'string') return result;
 
     let fullResponse = '';
-    for await (const chunk of result) {
-        const streamText = chunk.data.choices[0]?.delta?.content;
-        if (streamText) {
-            fullResponse += streamText;
+    if (MODEL_CONFIG.model === 'mistral-small-latest') {
+        for await (const chunk of result) {
+            const streamText = chunk.data.choices[0]?.delta?.content;
+            if (streamText) {
+                fullResponse += streamText;
+            }
+        }
+    } else {
+        for await (const chunk of result) {
+            const streamText = chunk.choices[0]?.delta?.content;
+            if (streamText) {
+                fullResponse += streamText;
+            }
         }
     }
 
