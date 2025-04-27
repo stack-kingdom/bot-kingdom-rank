@@ -8,12 +8,12 @@ import { Mistral } from '@mistralai/mistralai';
 /**
  * @description Configuração do modelo de IA.
  */
-const MODEL_CONFIG = {
+export const MODEL_CONFIG = {
     provider: 'mistral', // 'mistral' ou 'openai'
     model: 'mistral-small-latest', // 'mistral-small-latest' ou 'grok-3-beta',
-    stream: true,
-    max_tokens: 700,
-    temperature: 0.7,
+    stream: false,
+    max_tokens: 1000,
+    temperature: 0.5,
 };
 
 /**
