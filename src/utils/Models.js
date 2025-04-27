@@ -21,7 +21,7 @@ export const MODEL_CONFIG = {
  * @description Classe para interagir com os modelos de IA.
  * @method run
  */
-export default class Models {
+export class Models {
     static async run({ question, systemContent = '' }) {
         const messages = [];
 
