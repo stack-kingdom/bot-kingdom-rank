@@ -230,25 +230,10 @@ setInterval(async () => {
     }
 }, rules.events.calls);
 
-client.on('ready', async () => {
-    console.log(`Bot logado como ${client.user.tag}`);
-
-    const allowedGuildId = Bun.env.GUILD_ID;
-    const guilds = client.guilds.cache;
-
-    for (const guild of guilds.values()) {
-        if (guild.id !== allowedGuildId) {
-            try {
-                await guild.leave();
-                console.log(`Bot saiu de ${guild.name} (não autorizado).`);
-            } catch (error) {
-                console.error(`Erro ao sair de ${guild.name}:`, error);
-            }
-        }
-    }
-});
-
-client.on('guildCreate', async (guild) => {
+/**
+ * @description Evento para verificar se o bot está em um servidor autorizado
+ */
+client.on('guildAvailable', async (guild) => {
     const allowedGuildId = Bun.env.GUILD_ID;
     if (guild.id !== allowedGuildId) {
         try {
@@ -257,6 +242,8 @@ client.on('guildCreate', async (guild) => {
         } catch (error) {
             console.error(`Erro ao sair de ${guild.name}:`, error);
         }
+    } else {
+        console.log(`Bot entrou no servidor ${guild.name}`);
     }
 });
 /**
