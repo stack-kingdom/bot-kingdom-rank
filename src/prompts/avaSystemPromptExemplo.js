@@ -3,26 +3,33 @@
  */
 
 /**
- * Gera o prompt do sistema para a IA Ava.
- * @param {object} data - Dados necessários para formatar o prompt.
- * @param {string} data.userId - O ID do usuário que fez a pergunta.
- * @param {string} data.userQuestion - O nome de exibição do usuário.
- * @param {string} data.nomeServer - O nome do servidor.
- * @param {number} data.memberCount - A contagem de membros do servidor.
- * @param {object} data.rules - O objeto de regras.
+ * @description Gera o prompt do sistema para a Ava.
+ * @param {Object} params - Parâmetros para gerar o prompt.
+ * @param {string} params.criador - Nome do criador do servidor.
+ * @param {string} params.userId - ID do usuário.
+ * @param {string} params.userDisplayName - Nome de exibição do usuário.
+ * @param {string} params.nomeServer - Nome do servidor.
+ * @param {number} params.memberCount - Número de membros no servidor.
+ * @param {string} params.rules - Regras do servidor.
+ * @param {Array} params.todosCargos - Lista de todos os cargos do servidor.
+ * @param {Array} params.todosCanais - Lista de todos os canais do servidor.
+ * @param {Array} params.todosMembros - Lista de todos os membros do servidor.
+ * @param {Array} params.membrosOnline - Lista de membros online no servidor.
+ * @param {string} [params.contextoChat=''] - Contexto do chat, se disponível.
  * @returns {string} O prompt do sistema formatado.
  */
 export function generateAvaSystemPrompt({
+    criador,
     userId,
-    userQuestion,
+    userDisplayName,
     nomeServer,
     memberCount,
     rules,
+    todosCargos,
+    todosCanais,
+    todosMembros,
+    membrosOnline,
+    contextoChat = '',
 }) {
-    const currentTime = new Date().toLocaleString('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-    });
-    return `Seu prompt aqui. Usuário: ${userQuestion}, Servidor: ${nomeServer}, Membros: ${memberCount}, Regras: ${JSON.stringify(
-        rules
-    )}, Hora: ${currentTime}`;
+    return ` Prompt aqui`;
 }
