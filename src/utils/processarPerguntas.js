@@ -18,7 +18,7 @@ async function processarPergunta(
 
     let contextoChat = '';
     if (contextoMensagens.historico && contextoMensagens.historico.length > 0) {
-        const ultimasMensagens = contextoMensagens.historico;
+        const ultimasMensagens = contextoMensagens.historico.slice(-2);
         ultimasMensagens.forEach((msg) => {
             const authorName = msg.isBot ? 'Você' : msg.author.username;
             contextoChat += `${authorName}: ${msg.content}\n`;
@@ -40,7 +40,10 @@ async function processarPergunta(
     if (typeof result === 'string') return result;
 
     let fullResponse = '';
-    if (MODEL_CONFIG.model === 'mistral-small-latest') {
+    if (
+        MODEL_CONFIG.model === 'mistral-small-latest' ||
+        MODEL_CONFIG.model === 'mistral-large-latest'
+    ) {
         for await (const chunk of result) {
             const streamText = chunk.data.choices[0]?.delta?.content;
             if (streamText) {
