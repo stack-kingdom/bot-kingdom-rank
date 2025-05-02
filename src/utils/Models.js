@@ -9,17 +9,18 @@ import { Mistral } from '@mistralai/mistralai';
  * @description Configuração do modelo de IA.
  */
 export const MODEL_CONFIG = {
-    provider: 'mistral', // 'mistral' ou 'openai'
-    model: 'mistral-small-latest', // 'mistral-small-latest' ou 'grok-3-beta',
-    stream: false,
-    max_tokens: 1000,
-    temperature: 0.5,
+    provider: 'openai', // 'mistral' ou 'openai'
+    model: 'grok-3-beta', // 'mistral-small-latest', 'mistral-large-latest ou 'grok-3-beta',
+    stream: true,
+    max_tokens: 600,
+    temperature: 0.7,
 };
 
 /**
  * @class Models
  * @description Classe para interagir com os modelos de IA.
  * @method run
+ * @method runImage
  */
 export class Models {
     static async run({ question, systemContent = '' }) {
@@ -81,5 +82,26 @@ export class Models {
             return result.choices[0].message.content;
         }
         throw new Error(`Provider ${provider} não suportado.`);
+    }
+
+    /**
+     * @description Método para gerar uma imagem com a IA.
+     * @param {string} question - A pergunta para gerar a imagem.
+     * @returns {string} - URL da imagem gerada.
+     */
+    static async runImage(question) {
+        if (MODEL_CONFIG.provider === 'openai') {
+            const openai = new OpenAI({
+                apiKey: process.env.OPENAI_API_KEY,
+                baseURL: 'https://api.x.ai/v1',
+            });
+
+            const response = await openai.images.generate({
+                model: 'grok-2-image-latest',
+                prompt: question,
+            });
+
+            return response.data[0].url;
+        }
     }
 }
