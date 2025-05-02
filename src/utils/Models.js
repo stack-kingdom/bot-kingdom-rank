@@ -9,8 +9,9 @@ import { Mistral } from '@mistralai/mistralai';
  * @description Configuração do modelo de IA.
  */
 export const MODEL_CONFIG = {
-    provider: 'openai', // 'mistral' ou 'openai'
-    model: 'grok-3-beta', // 'mistral-small-latest', 'mistral-large-latest ou 'grok-3-beta',
+    provider: 'mistral', // 'mistral' ou 'openai'
+    model: 'mistral-large-latest', // 'mistral-small-latest', 'mistral-large-latest ou 'grok-3-beta',
+    image: 'openai',
     stream: true,
     max_tokens: 600,
     temperature: 0.7,
@@ -90,7 +91,7 @@ export class Models {
      * @returns {string} - URL da imagem gerada.
      */
     static async runImage(question) {
-        if (MODEL_CONFIG.provider === 'openai') {
+        if (MODEL_CONFIG.image === 'openai') {
             const openai = new OpenAI({
                 apiKey: process.env.OPENAI_API_KEY,
                 baseURL: 'https://api.x.ai/v1',
