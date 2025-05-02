@@ -7,16 +7,21 @@ import { processarPergunta } from '../../utils/processarPerguntas.js';
 
 /**
  * @description Comando para interagir com a IA Ava.
- * @type SlashCommandOptionsOnlyBuilder
+ * @type {import('discord.js').SlashCommandBuilder}
  */
 const data = new SlashCommandBuilder()
     .setName('ava')
     .setDescription('Comandos relacionados à Ava')
-    .addStringOption((option) =>
-        option
-            .setName('pergunta')
-            .setDescription('A pergunta que você quer fazer')
-            .setRequired(true)
+    .addSubcommand((subcommand) =>
+        subcommand
+            .setName('chat')
+            .setDescription('Faça uma pergunta para a Ava')
+            .addStringOption((option) =>
+                option
+                    .setName('pergunta')
+                    .setDescription('A pergunta que você quer fazer')
+                    .setRequired(true)
+            )
     );
 
 /**
@@ -24,7 +29,12 @@ const data = new SlashCommandBuilder()
  * @param {object} interaction - A interação do usuário.
  */
 async function execute(interaction) {
-    const question = interaction.options.getString('pergunta');
+    const subcommand = interaction.options.getSubcommand();
+
+    const question =
+        subcommand === 'chat'
+            ? interaction.options.getString('pergunta')
+            : null;
 
     await interaction.deferReply();
 
@@ -39,4 +49,4 @@ async function execute(interaction) {
     }
 }
 
-export { data, execute, processarPergunta };
+export { data, execute };
