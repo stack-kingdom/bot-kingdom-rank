@@ -24,6 +24,13 @@ export const MODEL_CONFIG = {
  * @method runImage
  */
 export class Models {
+    /**
+     * @method run
+     * @description Método para interagir com o modelo de IA.
+     * @param {string} question - Pergunta a ser feita ao modelo.
+     * @param {string} systemContent - Conteúdo do sistema.
+     * @returns {Promise<string>} Resposta do modelo.
+     */
     static async run({ question, systemContent = '' }) {
         const messages = [];
 
