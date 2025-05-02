@@ -11,13 +11,18 @@ import { Models } from '../../utils/Models.js';
  * @type {SlashCommandOptionsOnlyBuilder}
  */
 const data = new SlashCommandBuilder()
-    .setName('gerar_imagem')
+    .setName('gerar')
     .setDescription('Comando para gerar imagens com a Ava')
-    .addStringOption((option) =>
-        option
-            .setName('prompt')
-            .setDescription('Descrição da imagem que você quer gerar')
-            .setRequired(true)
+    .addSubcommand((subcommand) =>
+        subcommand
+            .setName('imagem')
+            .setDescription('Gere uma imagem com a IA Ava')
+            .addStringOption((option) =>
+                option
+                    .setName('prompt')
+                    .setDescription('Descrição da imagem que você quer gerar')
+                    .setRequired(true)
+            )
     );
 
 /**
@@ -25,7 +30,11 @@ const data = new SlashCommandBuilder()
  * @param {object} interaction - A interação do usuário.
  */
 async function execute(interaction) {
-    const prompt = interaction.options.getString('prompt');
+    const subcommand = interaction.options.getSubcommand();
+    const prompt =
+        subcommand === 'imagem'
+            ? interaction.options.getString('prompt')
+            : null;
 
     await interaction.deferReply();
 
