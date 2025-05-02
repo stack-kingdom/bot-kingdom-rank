@@ -11,7 +11,7 @@ import {
 import { Glob } from 'bun';
 import { pool, createTable } from '../data/database.js';
 import rules from './utils/rules.js';
-import { processarPergunta } from './commands/ai/ava.js';
+import { processarPergunta } from './utils/processarPerguntas.js';
 
 const dbClient = pool;
 /**
