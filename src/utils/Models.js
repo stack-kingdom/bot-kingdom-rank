@@ -11,7 +11,6 @@ import { Mistral } from '@mistralai/mistralai';
 export const MODEL_CONFIG = {
     provider: 'mistral', // 'mistral' ou 'openai'
     model: 'mistral-large-latest', // 'mistral-small-latest', 'mistral-large-latest ou 'grok-3-beta',
-    image: 'openai',
     stream: true,
     max_tokens: 600,
     temperature: 0.7,
