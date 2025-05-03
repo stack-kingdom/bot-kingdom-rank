@@ -32,6 +32,22 @@ export class Models {
      * @returns {Promise<string>} Resposta do modelo.
      */
     static async run({ question, systemContent = '' }) {
+        if (typeof question !== 'string' || question.trim() === '') {
+            return Promise.reject(
+                new Error(
+                    `O parâmetro 'question' deve ser uma string não vazia. Valor recebido: ${question}`
+                )
+            );
+        }
+
+        if (typeof systemContent !== 'string') {
+            return Promise.reject(
+                new Error(
+                    `O parâmetro 'systemContent' deve ser uma string. Valor recebido: ${systemContent}`
+                )
+            );
+        }
+
         const messages = [];
 
         if (systemContent) {
@@ -61,7 +77,7 @@ export class Models {
                 messages,
             };
 
-            return await mistral.chat.stream({
+            return mistral.chat.stream({
                 ...payload,
             });
         }
@@ -86,10 +102,19 @@ export class Models {
                 });
             }
 
-            const result = await client.chat.completions.create(payload);
-            return result.choices[0].message.content;
+            return client.chat.completions
+                .create(payload)
+                .then((result) => {
+                    return result.choices[0].message.content;
+                })
+                .catch((error) => {
+                    throw new Error(
+                        `Erro ao interagir com o modelo de IA: ${error.message}`
+                    );
+                });
         }
-        throw new Error(`Provider ${provider} não suportado.`);
+
+        return Promise.reject(new Error(`Provider ${provider} não suportado.`));
     }
 
     /**
@@ -98,18 +123,50 @@ export class Models {
      * @returns {string} - URL da imagem gerada.
      */
     static async runImage(question) {
-        if (MODEL_CONFIG.image === 'openai') {
+        if (typeof question !== 'string' || question.trim() === '') {
+            return Promise.reject(
+                new Error(
+                    `O parâmetro 'question' deve ser uma string não vazia. Valor recebido: ${question}`
+                )
+            );
+        }
+
+        const model = 'grok';
+
+        if (model === 'grok') {
             const openai = new OpenAI({
                 apiKey: process.env.OPENAI_API_KEY,
                 baseURL: 'https://api.x.ai/v1',
             });
 
-            const response = await openai.images.generate({
-                model: 'grok-2-image-latest',
-                prompt: question,
-            });
+            return openai.images
+                .generate({
+                    model: 'grok-2-image-latest',
+                    prompt: question,
+                })
+                .then((response) => {
+                    if (
+                        !response ||
+                        !response.data ||
+                        !response.data[0] ||
+                        !response.data[0].url
+                    ) {
+                        throw new Error(
+                            'A API não retornou uma URL válida para a imagem.'
+                        );
+                    }
 
-            return response.data[0].url;
+                    return response.data[0].url;
+                })
+                .catch((error) => {
+                    throw new Error(`Erro ao gerar a imagem: ${error.message}`);
+                });
         }
+
+        return Promise.reject(
+            new Error(
+                'Falha ao gerar a imagem. Verifique os logs para mais detalhes.'
+            )
+        );
     }
 }
