@@ -63,6 +63,7 @@ client.once(Events.ClientReady, async (readyClient) => {
 
 /**
  * @description Evento para pontuar os usuários por mensagens enviadas
+ * @param {Message} message - A mensagem enviada pelo usuário
  */
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
@@ -93,7 +94,11 @@ client.on('messageCreate', async (message) => {
 });
 
 /**
- * @description Evento para mensagens do Bot
+ * @description Evento para chamar o Bot com @
+ * @param {Message} message - A mensagem enviada pelo usuário
+ * Este evento é acionado sempre que uma mensagem é criada no canal.
+ * Ele verifica se a mensagem menciona o bot e, se for o caso, processa a mensagem
+ * para responder à pergunta ou solicitação do usuário.
  */
 client.on('messageCreate', async (message) => {
     if (
