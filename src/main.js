@@ -90,8 +90,17 @@ client.on('messageCreate', async (message) => {
             [message.id, message.author.id, pontos]
         );
     }
+});
 
-    if (message.mentions.has(client.user) && !message.content.startsWith('/')) {
+/**
+ * @description Evento para mensagens do Bot
+ */
+client.on('messageCreate', async (message) => {
+    if (
+        message.mentions.has(client.user) &&
+        !message.content.startsWith('/') &&
+        !message.mentions.everyone
+    ) {
         const content = message.content
             .replace(`<@${client.user.id}>`, '')
             .trim();
