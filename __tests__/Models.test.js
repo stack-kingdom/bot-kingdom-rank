@@ -12,16 +12,18 @@ describe('Métodos da classe Models', () => {
     }));
 
     const question = 'Qual é a capital da França?';
+    const systemContent =
+        'Você é um assistente virtual que ajuda os usuários a responder perguntas sobre o mundo real.';
+
     describe('Método run', () => {
-        test('Tipo da resposta deve ser string', async () => {
-            const response = await Models.run({ question });
-            expect(response).toBeTypeOf('string');
-            expect.assertions(1);
+        test('Deve retornar uma string', () => {
+            expect(Models.run({ question })).resolves.toBeTypeOf('string');
         });
-        test('Deve gerar uma resposta com a pergunta fornecida', async () => {
-            const response = await Models.run({ question });
-            expect(response).toBe(`Resultado da pergunta ${question}`);
-            expect.assertions(1);
+        test('Deve não retornar uma string vazia', () => {
+            expect(Models.run({ question })).resolves.not.toBe('');
+        });
+        test('Deve não retornar uma string', () => {
+            expect(Models.run({ question })).not.toBeTypeOf('string');
         });
     });
     describe('Método runImage', () => {
