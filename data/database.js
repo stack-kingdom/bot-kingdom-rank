@@ -45,6 +45,10 @@ const validateEnv = () => {
  * @description Pool para conectar ao banco de dados
  */
 let pool;
+/**
+ * @description Flag para controlar o estado de reconexão
+ */
+let isReconnecting = false;
 
 try {
     validateEnv();
@@ -59,15 +63,36 @@ try {
  * @returns {Promise<void>}
  */
 async function reconnectPool() {
+    if (isReconnecting) {
+        console.log('Já existe uma reconexão em andamento...');
+        return;
+    }
+
+    isReconnecting = true;
     console.log('Tentando reconectar ao banco de dados...');
+
     try {
-        await pool.end();
+        const oldPool = pool;
         pool = new pg.Pool(poolConfig);
+
         pool.on('error', handlePoolError);
+
+        await pool.query('SELECT 1');
         console.log('Novo pool criado com sucesso');
+
+        try {
+            await oldPool.end();
+        } catch (endError) {
+            console.error(
+                'Erro ao encerrar pool antigo (não crítico):',
+                endError.message
+            );
+        }
     } catch (error) {
         console.error('Erro ao reconectar:', error.message);
         setTimeout(reconnectPool, 5000);
+    } finally {
+        isReconnecting = false;
     }
 }
 
@@ -77,7 +102,13 @@ async function reconnectPool() {
  */
 function handlePoolError(err) {
     console.error('Erro inesperado no pool de conexões:', err.message);
-    reconnectPool();
+
+    if (
+        !err.message.includes('pool is ending') &&
+        !err.message.includes('after calling end')
+    ) {
+        reconnectPool();
+    }
 }
 
 pool.on('error', handlePoolError);
@@ -108,9 +139,7 @@ const createTable = async () => {
         console.log('Tabelas criadas com sucesso');
     } catch (err) {
         console.error('Erro ao executar query ou ler o arquivo:', err.message);
-        // Log do erro original para mais detalhes, se necessário
-        // console.error(err);
-        throw err; // Re-lança o erro para que main.js possa saber
+        throw err;
     } finally {
         if (client) {
             client.release();
