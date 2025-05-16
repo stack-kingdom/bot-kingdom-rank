@@ -3,7 +3,7 @@
  */
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import rules from '../../utils/rules.js';
-import { pool } from '../../../data/database.js';
+import { sql } from 'bun';
 
 /**
  * @type {Object}
@@ -33,8 +33,7 @@ async function execute(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     let userData;
     try {
-        const { rows } = await pool.query(
-            `
+        const [row] = await sql`           
             WITH ranking AS (
                 SELECT id,
                        username,
@@ -45,11 +44,9 @@ async function execute(interaction) {
             )
             SELECT username, message_count, call_count, rank_position 
             FROM ranking 
-            WHERE id = $1
-        `,
-            [user.id]
-        );
-        userData = rows[0];
+            WHERE id = ${user.id}
+        `;
+        userData = row;
     } catch (error) {
         await interaction.reply(
             'Ops 🫠! Não conseguimos encontrar os dados do usuário no momento... tente novamente mais tarde.'
