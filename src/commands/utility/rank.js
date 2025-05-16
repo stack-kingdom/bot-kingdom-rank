@@ -6,8 +6,8 @@ import {
     EmbedBuilder,
     SlashCommandBuilder,
 } from 'discord.js';
-import { pool } from '../../../data/database.js';
 import rules from '../../utils/rules.js';
+import { sql } from 'bun';
 
 /**
  * @description Dados do comando
@@ -62,10 +62,12 @@ const rankingEmbed = (users) => {
 async function execute(interaction) {
     let users;
     try {
-        const { rows } = await pool.query(
-            'SELECT username, message_count, call_count FROM users ORDER BY (message_count + call_count) DESC LIMIT 10'
-        );
-        users = rows;
+        users = await sql`
+            SELECT username, message_count, call_count 
+            FROM users 
+            ORDER BY (message_count + call_count) DESC 
+            LIMIT 10
+        `;
     } catch (error) {
         await interaction.reply(
             'Ops 🫠! Não conseguimos encontrar os dados do ranking no momento... tente novamente mais tarde.'
