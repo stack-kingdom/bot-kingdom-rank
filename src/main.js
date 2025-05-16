@@ -8,12 +8,11 @@ import {
     GatewayIntentBits,
     MessageFlags,
 } from 'discord.js';
-import { Glob } from 'bun';
-import { pool, createTable } from '../data/database.js';
+import { Glob, sql } from 'bun';
+import { createTable } from '../data/database.js';
 import rules from './utils/rules.js';
 import { processarPergunta } from './utils/processarPerguntas.js';
 
-const dbClient = pool;
 /**
  * @type {Client}
  * @description Cliente do bot para interagir com a API do Discord
@@ -69,27 +68,22 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     if (!message.author.bot) {
-        const pontos = rules.points.mensagens || 1;
-        const user = await dbClient.query('SELECT * FROM users WHERE id = $1', [
-            message.author.id,
-        ]);
-
-        if (user.rows.length > 0) {
-            await dbClient.query(
-                'UPDATE users SET message_count = message_count + $1 WHERE id = $2',
-                [pontos, message.author.id]
-            );
+        const pontos = rules.points.mensagens;
+        const [user] =
+            await sql`SELECT * FROM users WHERE id = ${message.author.id}`;
+        if (user) {
+            await sql`
+              UPDATE users SET message_count = message_count + ${pontos} WHERE id = ${message.author.id}
+            `;
         } else {
-            await dbClient.query(
-                'INSERT INTO users (id, username, message_count) VALUES ($1, $2, $3)',
-                [message.author.id, message.author.username, pontos]
-            );
+            await sql`
+              INSERT INTO users (id, username, message_count) VALUES (${message.author.id}, ${message.author.username}, ${pontos})
+            `;
         }
 
-        await dbClient.query(
-            'INSERT INTO messages (id, user_id, points) VALUES ($1, $2, $3)',
-            [message.id, message.author.id, pontos]
-        );
+        await sql`
+            INSERT INTO messages (id, user_id, points) VALUES (${message.id}, ${message.author.id}, ${pontos})
+          `;
     }
 });
 
@@ -181,19 +175,18 @@ client.on('messageCreate', async (message) => {
  */
 client.on('messageDelete', async (message) => {
     if (!message.author || message.author.bot) return;
-    const msgData = await dbClient.query(
-        'SELECT points FROM messages WHERE id = $1',
-        [message.id]
-    );
 
-    if (msgData.rows.length > 0) {
-        await dbClient.query(
-            'UPDATE users SET message_count = message_count - $1 WHERE id = $2',
-            [msgData.rows[0].points, message.author.id]
-        );
-        await dbClient.query('DELETE FROM messages WHERE id = $1', [
-            message.id,
-        ]);
+    const [msgData] = await sql`
+      SELECT points FROM messages WHERE id = ${message.id}
+    `;
+
+    if (msgData) {
+        await sql`
+        UPDATE users SET message_count = message_count - ${msgData.points} WHERE id = ${message.author.id}
+      `;
+        await sql`
+        DELETE FROM messages WHERE id = ${message.id}
+      `;
     }
 });
 
@@ -219,23 +212,22 @@ setInterval(async () => {
 
     for (const userId of usersInVoice) {
         try {
-            const user = await dbClient.query(
-                'SELECT * FROM users WHERE id = $1',
-                [userId]
-            );
+            const [user] = await sql`
+            SELECT * FROM users WHERE id = ${userId}
+          `;
 
-            if (user.rows.length > 0) {
-                await dbClient.query(
-                    'UPDATE users SET call_count = call_count + $1 WHERE id = $2',
-                    [rules.points.calls, userId]
-                );
+            if (user) {
+                await sql`
+              UPDATE users SET call_count = call_count + ${rules.points.calls} WHERE id = ${userId}
+            `;
             } else {
                 const member = client.users.cache.get(userId);
                 if (member) {
-                    await dbClient.query(
-                        'INSERT INTO users (id, username, message_count, call_count) VALUES ($1, $2, $3, $4)',
-                        [userId, member.username, 0, rules.points.calls]
-                    );
+                    await sql`
+                INSERT INTO users (id, username, message_count, call_count) VALUES (${userId}, ${
+                        member.username
+                    }, ${0}, ${rules.points.calls})
+              `;
                 }
             }
         } catch (error) {
