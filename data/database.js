@@ -1,150 +1,54 @@
 /**
- * @fileoverview Arquivo responsável por criar e gerenciar a conexão com o banco de dados.
+ * @fileoverview Arquivo responsável por criar e gerenciar a conexão com o banco de dados usando Bun SQL.
  */
-import pg from 'pg';
+
+import { SQL, sql } from 'bun';
 
 /**
- * @description Configuração do pool de conexões
- * @type {Object}
+ * @description Instância do Bun SQL configurada com as variáveis de ambiente
+ * @type {SQL}
  */
-const poolConfig = {
-    user: Bun.env.DB_USER,
-    host: Bun.env.DB_HOST,
+const pool = new SQL({
     database: Bun.env.DB_NAME,
+    user: Bun.env.DB_USER,
     password: Bun.env.DB_PASS,
-    port: Bun.env.DB_PORT,
+    host: Bun.env.DB_HOST,
+    port: parseInt(Bun.env.DB_PORT, 10),
     ssl: Bun.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 30000,
-    max: 10,
-    keepAlive: true,
-};
-
-/**
- * @description Validação das variáveis de ambiente necessárias
- * @throws {Error} Se alguma variável de ambiente estiver faltando
- */
-const validateEnv = () => {
-    const requiredEnvVars = [
-        'DB_USER',
-        'DB_HOST',
-        'DB_NAME',
-        'DB_PASS',
-        'DB_PORT',
-    ];
-    const missingVars = requiredEnvVars.filter((varName) => !Bun.env[varName]);
-
-    if (missingVars.length > 0) {
-        throw new Error(
-            `Variáveis de ambiente faltando: ${missingVars.join(', ')}`
-        );
-    }
-};
-
-/**
- * @description Pool para conectar ao banco de dados
- */
-let pool;
-/**
- * @description Flag para controlar o estado de reconexão
- */
-let isReconnecting = false;
-
-try {
-    validateEnv();
-    pool = new pg.Pool(poolConfig);
-} catch (error) {
-    console.error('Erro ao criar pool de conexões:', error.message);
-    process.exit(1);
-}
-
-/**
- * @description Função para reconectar ao banco de dados
- * @returns {Promise<void>}
- */
-async function reconnectPool() {
-    if (isReconnecting) {
-        console.log('Já existe uma reconexão em andamento...');
-        return;
-    }
-
-    isReconnecting = true;
-    console.log('Tentando reconectar ao banco de dados...');
-
-    try {
-        const oldPool = pool;
-        pool = new pg.Pool(poolConfig);
-
-        pool.on('error', handlePoolError);
-
-        await pool.query('SELECT 1');
-        console.log('Novo pool criado com sucesso');
-
-        try {
-            await oldPool.end();
-        } catch (endError) {
-            console.error(
-                'Erro ao encerrar pool antigo (não crítico):',
-                endError.message
-            );
-        }
-    } catch (error) {
-        console.error('Erro ao reconectar:', error.message);
-        setTimeout(reconnectPool, 5000);
-    } finally {
-        isReconnecting = false;
-    }
-}
-
-/**
- * @description Função para tratar erros do pool
- * @param {Error} err - Erro ocorrido
- */
-function handlePoolError(err) {
-    console.error('Erro inesperado no pool de conexões:', err.message);
-
-    if (
-        !err.message.includes('pool is ending') &&
-        !err.message.includes('after calling end')
-    ) {
-        reconnectPool();
-    }
-}
-
-pool.on('error', handlePoolError);
+    max: 50,
+    idleTimeout: 30000,
+    connectionTimeout: 10000,
+});
 
 /**
  * @description Função para criar as tabelas no banco de dados
  * @returns {Promise<void>}
  */
 const createTable = async () => {
-    let client;
     try {
-        client = await pool.connect();
-        console.log('Conexão obtida do pool com sucesso');
+        console.log('Inicializando criação de tabelas...');
 
-        const schemaPath = `${import.meta.dirname}/schema.sql`;
-        const file = Bun.file(schemaPath);
-        const schema = await file.text();
+        await sql`
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGINT PRIMARY KEY,
+                username TEXT NOT NULL,
+                message_count FLOAT DEFAULT 0,
+                call_count FLOAT DEFAULT 0
+            );
+          `;
+        await sql`
+            CREATE TABLE IF NOT EXISTS messages (
+                id BIGINT PRIMARY KEY,
+                user_id BIGINT REFERENCES users(id),
+                points FLOAT DEFAULT 0
+            );
 
-        const commands = schema
-            .split(';')
-            .map((cmd) => cmd.trim())
-            .filter((cmd) => cmd.length > 0);
-
-        for (const command of commands) {
-            await client.query(command + ';');
-        }
+          `;
 
         console.log('Tabelas criadas com sucesso');
     } catch (err) {
         console.error('Erro ao executar query ou ler o arquivo:', err.message);
         throw err;
-    } finally {
-        if (client) {
-            client.release();
-            console.log('Conexão liberada de volta ao pool');
-        }
     }
 };
 
