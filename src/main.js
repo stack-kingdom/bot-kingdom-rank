@@ -100,6 +100,23 @@ client.on('messageCreate', async (message) => {
         !message.content.startsWith('/') &&
         !message.mentions.everyone
     ) {
+        if (message.reference && message.reference.messageId) {
+            try {
+                const referencedMessage = await message.channel.messages.fetch(
+                    message.reference.messageId
+                );
+                if (
+                    referencedMessage.author.id === client.user.id &&
+                    (referencedMessage.attachments.size > 0 ||
+                        referencedMessage.embeds.some((embed) => embed.image))
+                ) {
+                    return;
+                }
+            } catch (error) {
+                console.error('Erro ao buscar mensagem referenciada:', error);
+            }
+        }
+
         const content = message.content
             .replace(`<@${client.user.id}>`, '')
             .trim();
@@ -153,8 +170,8 @@ client.on('messageCreate', async (message) => {
                 await message.reply(content);
             },
         };
-
         try {
+            await message.channel.sendTyping();
             const resposta = await processarPergunta(
                 fakeInteraction,
                 content,
