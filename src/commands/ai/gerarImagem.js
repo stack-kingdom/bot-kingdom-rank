@@ -8,7 +8,7 @@ import { Models } from '../../utils/Models.js';
 
 /**
  * @description Comando para gerar imagens com a IA Ava.
- * @type {SlashCommandOptionsOnlyBuilder}
+ * @type {SlashCommandBuilder}
  */
 const data = new SlashCommandBuilder()
     .setName('gerar')
@@ -30,11 +30,8 @@ const data = new SlashCommandBuilder()
  * @param {object} interaction - A interação do usuário.
  */
 async function execute(interaction) {
-    const subcommand = interaction.options.getSubcommand();
-    const prompt =
-        subcommand === 'imagem'
-            ? interaction.options.getString('prompt')
-            : null;
+    const prompt = interaction.options.getString('prompt');
+    const imageSize = interaction.options.getString('tamanho') || '1024x1024';
 
     await interaction.deferReply();
 
@@ -53,9 +50,22 @@ async function execute(interaction) {
         });
     } catch (error) {
         console.error('Erro ao gerar a imagem:', error);
-        await interaction.editReply({
-            content: 'Ocorreu um erro ao gerar sua imagem.',
-        });
+
+        if (
+            error.message &&
+            error.message.includes(
+                'Generated image rejected by content moderation'
+            )
+        ) {
+            await interaction.editReply({
+                content:
+                    '⚠️ Não foi possível gerar sua imagem pois o prompt contém conteúdo inadequado. Por favor, tente um prompt diferente que não viole as diretrizes de conteúdo.',
+            });
+        } else {
+            await interaction.editReply({
+                content: 'Ocorreu um erro ao gerar sua imagem.',
+            });
+        }
     }
 }
 
